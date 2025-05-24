@@ -5,12 +5,10 @@ from urllib.parse import urlparse
 app = Flask(__name__)
 
 def scrape_zillow(page):
-    page.wait_for_timeout(4000)  # wait for content to fully load
-
-    address_el = page.query_selector('h1[data-testid="home-details-summary-headline"]')
-    price_el = page.query_selector('span[data-testid="price"]')
-
-    facts = page.query_selector_all('ul[data-testid="bed-bath-beyond"] li span')
+    page.wait_for_timeout(3000)  # wait for page load (adjust if needed)
+    address_el = page.query_selector('[data-testid="home-details-summary-headline"]')
+    price_el = page.query_selector('[data-testid="price"]')
+    facts = page.query_selector_all('[data-testid="bed-bath-beyond-text"]')
 
     beds = facts[0].inner_text() if len(facts) > 0 else None
     baths = facts[1].inner_text() if len(facts) > 1 else None
