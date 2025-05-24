@@ -1,7 +1,6 @@
 from flask import Flask, request, jsonify
-import requests
-from bs4 import BeautifulSoup
-import re
+from requests_html import HTMLSession
+from urllib.parse import urlparse
 
 app = Flask(__name__)
 
@@ -11,63 +10,54 @@ def scrape():
         data = request.get_json()
         url = data.get("url")
 
-        if not url or ("zillow.com" not in url and "realtor.com" not in url):
-            return jsonify({"error": "Invalid or missing URL"}), 400
+        if not url:
+            return jsonify({"error": "Missing URL"}), 400
 
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
-        }
-        response = requests.get(url, headers=headers)
-        soup = BeautifulSoup(response.text, "html.parser")
+        # Normalize and check domain
+        domain = urlparse(url).netloc.lower()
 
-        # Address
-        address = soup.find("h1")
-        address_text = address.text.strip() if address else None
+        session = HTMLSession()
+        response = session.get(url)
+        response.html.render(timeout=30)
 
-        # Realtor.com logic
-        if "realtor.com" in url:
-            meta = soup.find("script", {"type": "application/ld+json"})
-            if meta:
-                json_text = meta.string
-                match_beds = re.search(r'"numberOfRooms":\s*(\d+)', json_text)
-                match_price = re.search(r'"price":\s*(\d+)', json_text)
+        if "zillow.com" in domain:
+            address = response.html.find('[data-testid="home-details-summary-headline"]', first=True)
+            price = response.html.find('[data-testid="price"]', first=True)
+            facts = response.html.find('[data-testid="bed-bath-beyond-text"]')
 
-                beds = match_beds.group(1) if match_beds else None
-                price = f"${match_price.group(1)}" if match_price else None
+            beds = facts[0].text if len(facts) > 0 else None
+            baths = facts[1].text if len(facts) > 1 else None
+            sqft = facts[2].text if len(facts) > 2 else None
 
-                # Optional parsing of baths, sqft from HTML
-                details = soup.find_all("li", class_="property-meta-item")
-                baths = sqft = None
-                for item in details:
-                    text = item.get_text()
-                    if "bath" in text.lower():
-                        baths = text
-                    elif "sqft" in text.lower():
-                        sqft = text
-
-                return jsonify({
-                    "address": address_text,
-                    "price": price,
-                    "beds": beds,
-                    "baths": baths,
-                    "sqft": sqft,
-                    "source_url": url
-                })
-
-        # Zillow logic (simplified)
-        if "zillow.com" in url:
-            title = soup.find("title")
-            title_text = title.text if title else None
             return jsonify({
-                "address": title_text,
-                "price": None,
-                "beds": None,
-                "baths": None,
-                "sqft": None,
+                "platform": "Zillow",
+                "address": address.text if address else None,
+                "price": price.text if price else None,
+                "beds": beds,
+                "baths": baths,
+                "sqft": sqft,
                 "source_url": url
             })
 
-        return jsonify({"error": "Unsupported domain"}), 400
+        elif "realtor.com" in domain:
+            address = response.html.find('span[itemprop="streetAddress"]', first=True)
+            price = response.html.find('span[data-label="pc-price"]', first=True)
+            beds = response.html.find('li[data-label="pc-meta-beds"]', first=True)
+            baths = response.html.find('li[data-label="pc-meta-baths"]', first=True)
+            sqft = response.html.find('li[data-label="pc-meta-sqft"]', first=True)
+
+            return jsonify({
+                "platform": "Realtor",
+                "address": address.text if address else None,
+                "price": price.text if price else None,
+                "beds": beds.text if beds else None,
+                "baths": baths.text if baths else None,
+                "sqft": sqft.text if sqft else None,
+                "source_url": url
+            })
+
+        else:
+            return jsonify({"error": "Unsupported domain"}), 400
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
