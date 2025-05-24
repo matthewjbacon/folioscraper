@@ -1,12 +1,11 @@
 from flask import Flask, request, jsonify
 from playwright.sync_api import sync_playwright
 from urllib.parse import urlparse
-import os
 
 app = Flask(__name__)
 
 def scrape_zillow(page):
-    page.wait_for_timeout(3000)  # wait for page load
+    page.wait_for_timeout(3000)
     address_el = page.query_selector('[data-testid="home-details-summary-headline"]')
     price_el = page.query_selector('[data-testid="price"]')
     facts = page.query_selector_all('[data-testid="bed-bath-beyond-text"]')
@@ -25,7 +24,7 @@ def scrape_zillow(page):
     }
 
 def scrape_realtor(page):
-    page.wait_for_timeout(3000)  # wait for page load
+    page.wait_for_timeout(3000)
     address_el = page.query_selector('span[itemprop="streetAddress"]')
     price_el = page.query_selector('span[data-label="pc-price"]')
     beds_el = page.query_selector('li[data-label="pc-meta-beds"]')
@@ -72,5 +71,4 @@ def scrape():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=8080)
