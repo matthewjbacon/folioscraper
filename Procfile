@@ -1,1 +1,1 @@
-web: playwright install && gunicorn app:app -b 0.0.0.0:$PORT
+web: playwright install chromium && gunicorn app:app -b 0.0.0.0:$PORT

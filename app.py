@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 app = Flask(__name__)
 
 def scrape_zillow(page):
-    page.wait_for_timeout(3000)  # wait for page load (adjust if needed)
+    page.wait_for_timeout(3000)  # wait for page load
     address_el = page.query_selector('[data-testid="home-details-summary-headline"]')
     price_el = page.query_selector('[data-testid="price"]')
     facts = page.query_selector_all('[data-testid="bed-bath-beyond-text"]')
@@ -24,7 +24,7 @@ def scrape_zillow(page):
     }
 
 def scrape_realtor(page):
-    page.wait_for_timeout(3000)  # wait for page load (adjust if needed)
+    page.wait_for_timeout(3000)  # wait for page load
     address_el = page.query_selector('span[itemprop="streetAddress"]')
     price_el = page.query_selector('span[data-label="pc-price"]')
     beds_el = page.query_selector('li[data-label="pc-meta-beds"]')
