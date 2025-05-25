@@ -5,23 +5,42 @@ from urllib.parse import urlparse
 app = Flask(__name__)
 
 def scrape_zillow(page):
-    page.wait_for_timeout(3000)
-    address_el = page.query_selector('[data-testid="home-details-summary-headline"]')
-    price_el = page.query_selector('[data-testid="price"]')
-    facts = page.query_selector_all('[data-testid="bed-bath-beyond-text"]')
+    try:
+        # Wait for the price element to ensure the page has loaded
+        page.wait_for_selector('[data-testid="price"]', timeout=10000)
 
-    beds = facts[0].inner_text() if len(facts) > 0 else None
-    baths = facts[1].inner_text() if len(facts) > 1 else None
-    sqft = facts[2].inner_text() if len(facts) > 2 else None
+        # Extract address
+        address_el = page.query_selector('h1')
+        address = address_el.inner_text().strip() if address_el else None
 
-    return {
-        "platform": "Zillow",
-        "address": address_el.inner_text() if address_el else None,
-        "price": price_el.inner_text() if price_el else None,
-        "beds": beds,
-        "baths": baths,
-        "sqft": sqft
-    }
+        # Extract price
+        price_el = page.query_selector('[data-testid="price"]')
+        price = price_el.inner_text().strip() if price_el else None
+
+        # Extract facts (beds, baths, sqft)
+        facts = page.query_selector_all('[data-testid="bed-bath-beyond"] [data-testid="bed-bath-item"]')
+        beds = facts[0].inner_text().strip() if len(facts) > 0 else None
+        baths = facts[1].inner_text().strip() if len(facts) > 1 else None
+        sqft = facts[2].inner_text().strip() if len(facts) > 2 else None
+
+        return {
+            "platform": "Zillow",
+            "address": address,
+            "price": price,
+            "beds": beds,
+            "baths": baths,
+            "sqft": sqft
+        }
+    except Exception as e:
+        print(f"Error scraping Zillow: {e}")
+        return {
+            "platform": "Zillow",
+            "address": None,
+            "price": None,
+            "beds": None,
+            "baths": None,
+            "sqft": None
+        }
 
 def scrape_realtor(page):
     page.wait_for_timeout(3000)
